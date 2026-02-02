@@ -1,34 +1,34 @@
-// Wrap everything in a load check to ensure elements exist
 window.addEventListener("load", function () {
     const startOverlay = document.getElementById("startOverlay");
     const startButton = document.getElementById("startButton");
     const cake = document.querySelector(".cake");
     
+    // Exact filename from your Vercel static assets
     let audio = new Audio('HappyBirthdaySong.mp3');
     let audioContext, analyser, microphone;
     let candles = [];
-    let celebrationStarted = false;
+    let celebrationTriggered = false;
 
     function handleStart() {
-        // Unlock audio for mobile
-        audio.play().then(() => {
-            audio.pause();
-            audio.currentTime = 0;
-        }).catch(err => console.log("Audio unlock error:", err));
+        // Music starts singing IMMEDIATELY upon clicking the button
+        audio.play().catch(err => {
+            console.log("Audio play blocked by browser settings:", err);
+        });
 
-        // Smoothly hide overlay
+        // Remove overlay to show the cake
         startOverlay.style.opacity = "0";
         setTimeout(() => {
             startOverlay.style.display = "none";
         }, 500);
 
+        // Start microphone for the candle-blowing mechanic
         initMicrophone();
     }
 
-    // Add both click and touch listeners for better mobile support
+    // Support both mouse and touch for mobile compatibility
     startButton.addEventListener("click", handleStart);
     startButton.addEventListener("touchstart", function(e) {
-        e.preventDefault(); // Prevents double-firing
+        e.preventDefault(); 
         handleStart();
     }, {passive: false});
 
@@ -59,17 +59,18 @@ window.addEventListener("load", function () {
                     microphone.connect(analyser);
                     analyser.fftSize = 256;
                     setInterval(checkBlowing, 200);
-                }).catch(err => alert("Please allow microphone access to blow out candles!"));
+                }).catch(err => console.log("Mic access denied."));
         }
     }
 
     function checkBlowing() {
-        if (candles.length === 0 || celebrationStarted || !analyser) return;
+        if (candles.length === 0 || !analyser) return;
 
         const data = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
 
+        // Threshold for blowing detection
         if (avg > 50) {
             candles.forEach(c => {
                 if (!c.classList.contains("out") && Math.random() > 0.4) {
@@ -78,17 +79,24 @@ window.addEventListener("load", function () {
             });
         }
 
-        if (candles.length > 0 && candles.every(c => c.classList.contains("out"))) {
-            celebrationStarted = true;
+        // Trigger fireworks if all candles are blown out
+        if (!celebrationTriggered && candles.length > 0 && candles.every(c => c.classList.contains("out"))) {
+            celebrationTriggered = true;
             triggerCelebration();
         }
     }
 
     function triggerCelebration() {
-        audio.play();
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        // Fireworks/Confetti effect
+        confetti({ particleCount: 200, spread: 90, origin: { y: 0.6 } });
+        
+        // Loop extra confetti every few seconds
         setInterval(() => {
-            confetti({ particleCount: 50, origin: { x: Math.random(), y: Math.random() - 0.2 } });
+            confetti({ 
+                particleCount: 50, 
+                origin: { x: Math.random(), y: Math.random() - 0.2 },
+                colors: ['#ffc2d1', '#ff8fab', '#fb6f92']
+            });
         }, 2000);
     }
 });
