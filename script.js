@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     function isBlowing() {
-        // SAFETY CHECK: If mic isn't ready, don't try to read it
         if (!analyser) return false;
 
         const bufferLength = analyser.frequencyBinCount;
@@ -54,14 +53,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         let average = sum / bufferLength;
 
-        // Lowered threshold to 40 so it's easier to blow out
+        // DEBUG: Log level to console to help troubleshooting
+        // console.log("Mic Level:", average);
+
+        // Update the visual mic meter
+        const meter = document.getElementById("mic-meter");
+        if (meter) {
+             meter.style.width = Math.min(100, (average * 2)) + "%"; // Scale for visibility
+        }
+
+        // Threshold for blowing (adjust if too hard/easy)
         return average > 40; 
     }
 
     function blowOutCandles() {
         let blownOut = 0;
 
-        // Only check if we have candles
         if (candles.length > 0 && candles.some((candle) => !candle.classList.contains("out"))) {
             if (isBlowing()) {
                 candles.forEach((candle) => {
@@ -85,34 +92,36 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // --- BUTTON CLICK HANDLER ---
     startBtn.addEventListener("click", function () {
-        // 1. Hide Overlay
         startOverlay.classList.add("hidden");
-
-        // 2. Play Music
+        
+        // 1. Play Music
         audio.play().catch((err) => console.warn("Audio play error:", err));
-
-        // 3. Auto-add one candle to the center so there is something to blow!
+        
+        // 2. Add a candle automatically
         addCandle(125, 85);
 
-        // 4. Initialize Microphone
+        // 3. Initialize Mic with "raw" settings (CRITICAL FOR MOBILE)
         if (navigator.mediaDevices.getUserMedia) {
             navigator.mediaDevices
-                .getUserMedia({ audio: true })
+                .getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false 
+                    } 
+                })
                 .then(function (stream) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     analyser = audioContext.createAnalyser();
                     microphone = audioContext.createMediaStreamSource(stream);
                     microphone.connect(analyser);
                     analyser.fftSize = 256;
-                    
-                    // Start checking for blowing
                     setInterval(blowOutCandles, 200);
                 })
                 .catch(function (err) {
                     console.log("Unable to access microphone: " + err);
-                    alert("⚠️ Microphone access denied! You won't be able to blow out candles. Check your browser settings.");
+                    alert("Please allow microphone access to blow out the candles! 🎤");
                 });
         } else {
             alert("Your browser does not support microphone access.");
